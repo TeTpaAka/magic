@@ -12,6 +12,7 @@ Textures: CC-BY-SA by TeTpaAka
 
 ## TODO
 * better textures
+* crafting recipes
 * add more spells
   * attack spells
   * explosions
