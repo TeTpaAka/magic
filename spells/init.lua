@@ -1,12 +1,20 @@
 function sample_spell(player, pointed_thing) 
 end
 
+local playereffects_path = minetest.get_modpath("playereffects")
+
 -- activate the spells
 minetest.register_on_joinplayer(function(player)
 	local playername = player:get_player_name()
 	wands.unlock_spell(playername, "spells:light")
 	wands.unlock_spell(playername, "spells:dig")
 	wands.unlock_spell(playername, "spells:place")
+	wands.unlock_spell(playername, "spells:heal")
+	wands.unlock_spell(playername, "spells:retrieve_item")
+	if (playereffects_path) then
+		wands.unlock_spell(playername, "spells:fly")
+		wands.unlock_spell(playername, "spells:water_breath")
+	end
 end)
 
 minetest.register_node("spells:lightball", {
@@ -76,3 +84,95 @@ wands.register_spell("spells:place", {
 		return success
 	end
 })
+
+wands.register_spell("spells:heal", {
+	title = "Heal Yourself",
+	description = "Heals yourself by 10 HP.",
+	type = "anything",
+	cost = 100,
+	func = function(player, pointed_thing)
+		if (player:get_hp() < 20) then
+			player:set_hp(player:get_hp() + 10)
+			return true
+		end
+		return false
+	end
+})
+
+wands.register_spell("spells:retrieve_item", {
+	title = "Retrieve Item",
+	description = "Retrieves item",
+	type = "object",
+	cost = 10,
+	func = function(player, pointed_thing)
+		local object = pointed_thing.ref
+		if (not object:is_player() and object:get_luaentity() and object:get_luaentity().name == "__builtin:item") then
+			local inv = player:get_inventory()
+			if (inv and inv:room_for_item("main", ItemStack(object:get_luaentity().itemstring))) then
+				inv:add_item("main", ItemStack(object:get_luaentity().itemstring))
+				object:get_luaentity().itemstring = ""
+				object:remove()
+				return true
+			end
+		end
+		print "test"
+		return false
+	end
+})
+
+
+if playereffects_path then
+	-- Fly
+	playereffects.register_effect_type("spells:fly_effect", "Fly (using k)", nil, {"fly"},
+		function(player)
+			local playername = player:get_player_name()
+			local privs = minetest.get_player_privs(playername)
+			if (privs.fly) then
+				return false
+			end
+			privs.fly = true
+			minetest.set_player_privs(playername, privs)
+			return true
+		end,
+		function(effect, player)
+			local playername = player:get_player_name()
+			local privs = minetest.get_player_privs(playername)
+			privs.fly = nil
+			minetest.set_player_privs(playername, privs)
+			return true
+		end)
+	wands.register_spell("spells:fly", {
+		title = "Fly",
+		description = "Allows you to fly (using k key)",
+		type = "anything",
+		cost = 100,
+		func = function(player, pointed_thing)
+			if (playereffects.apply_effect_type("spells:fly_effect", 60, player)) then
+				return true
+			end
+			return false
+		end
+	})
+
+	-- Breath under water
+	playereffects.register_effect_type("spells:water_breath_effect", "Breath even under water", nil, {"breath"},
+		function(player)
+			player:set_breath(11)
+			return true
+		end,
+		function(effect, player)
+		end,
+		false, true, 3)
+	wands.register_spell("spells:water_breath", {
+		title = "Water breath",
+		description = "Let's you breath even when you're not in air",
+		type = "anything",
+		cost = 100,
+		func = function(player, pointed_thing)
+			if (playereffects.apply_effect_type("spells:water_breath_effect", 20, player)) then
+				return true
+			end
+			return false
+		end
+	})
+end

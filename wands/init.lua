@@ -63,7 +63,7 @@ local use = function(itemstack, user, pointed_thing)
 	if (not wands.selected_spells[playername].list[selected] or wands.spells[wands.selected_spells[playername].list[selected]] == nil) then
 		return itemstack
 	end
-	if (pointed_thing.type == wands.spells[wands.selected_spells[playername].list[selected]].type) then
+	if (pointed_thing.type == wands.spells[wands.selected_spells[playername].list[selected]].type or wands.spells[wands.selected_spells[playername].list[selected]].type == "anything") then
 		if (wands.spells[wands.selected_spells[playername].list[selected]].func ~= nil) then
 			if (mana.subtract(playername, wands.spells[wands.selected_spells[playername].list[selected]].cost)) then
 				if (not wands.spells[wands.selected_spells[playername].list[selected]].func(user, pointed_thing)) then
