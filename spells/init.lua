@@ -1,7 +1,8 @@
-function sample_spell(player, pointed_thing) 
-end
-
 local playereffects_path = minetest.get_modpath("playereffects")
+local enable_attack = minetest.setting_getbool("enable_attack_spells")
+if (enable_attack == nil) then
+	enable_attack = true
+end
 
 -- activate the spells
 minetest.register_on_joinplayer(function(player)
@@ -11,9 +12,18 @@ minetest.register_on_joinplayer(function(player)
 	wands.unlock_spell(playername, "spells:place")
 	wands.unlock_spell(playername, "spells:heal")
 	wands.unlock_spell(playername, "spells:retrieve_item")
+	if (enable_attack) then
+		wands.unlock_spell(playername, "spells:damage")
+	end
 	if (playereffects_path) then
 		wands.unlock_spell(playername, "spells:fly")
 		wands.unlock_spell(playername, "spells:water_breath")
+		if (enable_attack) then
+			wands.unlock_spell(playername, "spells:blind")
+			wands.unlock_spell(playername, "spells:fall")
+			wands.unlock_spell(playername, "spells:drown")
+			wands.unlock_spell(playername, "spells:stun")
+		end
 	end
 end)
 
@@ -120,6 +130,22 @@ wands.register_spell("spells:retrieve_item", {
 	end
 })
 
+if (enable_attack) then
+	wands.register_spell("spells:damage", {
+		title = "Damage",
+		description = "Damages a monster or a player",
+		type = "object",
+		cost = 50,
+		func = function(player, pointed_thing)
+			local luaentity = pointed_thing.ref:get_luaentity()
+			if (luaentity and luaentity.name == "__builtin:item") then
+				return false
+			end
+			pointed_thing.ref:punch(player, nil, {damage_groups = {fleshy = 6}}, nil)
+			return true
+		end
+	})
+end
 
 if playereffects_path then
 	-- Fly
@@ -139,7 +165,6 @@ if playereffects_path then
 			local privs = minetest.get_player_privs(playername)
 			privs.fly = nil
 			minetest.set_player_privs(playername, privs)
-			return true
 		end)
 	wands.register_spell("spells:fly", {
 		title = "Fly",
@@ -175,4 +200,105 @@ if playereffects_path then
 			return false
 		end
 	})
+
+	if (enable_attack) then
+		playereffects.register_effect_type("spells:blind_effect", "blind", nil, {"blind"},
+			function(player)
+				local id = player:hud_add({
+					hud_elem_type = "image",
+					position = {x = .5, y = .5},
+					scale = {x = -100, y = -100},
+					text = "spells_blind.png"
+					})
+				return { id = id }
+			end,
+			function(effect, player)
+				player:hud_remove(effect.metadata.id)
+			end)
+		wands.register_spell("spells:blind", {
+			title = "Blind player",
+			description = "Blinds the player you're pointing at for five seconds",
+			type = "object",
+			cost = 50,
+			func = function(player, pointed_thing)
+				if (not pointed_thing.ref:is_player()) then
+					return false
+				end
+				if (playereffects.apply_effect_type("spells:blind_effect", 5, pointed_thing.ref)) then
+					return true
+				end
+				return false
+			end
+		})
+
+		playereffects.register_effect_type("spells:fall_effect", "no fly", nil, { "fly" },
+			function(player)
+				local playername = player:get_player_name()
+				local privs = minetest.get_player_privs(playername)
+				local fly = privs.fly
+				privs.fly = nil
+				minetest.set_player_privs(playername, privs)
+				return { fly = fly }
+			end,
+			function(effect, player)
+				local playername = player:get_player_name()
+				local privs = minetest.get_player_privs(playername)
+				privs.fly = effect.metadata.fly
+				minetest.set_player_privs(playername, privs)
+			end)
+
+		wands.register_spell("spells:fall", {
+			title = "Take down player",
+			description = "Stops a player from flying",
+			type = "object",
+			cost = 50,
+			func = function(player, pointed_thing)
+				if (not pointed_thing.ref:is_player()) then
+					return false
+				end
+				if (playereffects.apply_effect_type("spells:fall_effect", 15, pointed_thing.ref)) then
+					return true
+				end
+				return false
+			end
+		})
+
+		wands.register_spell("spells:drown", {
+			title = "Drown player",
+			description = "Takes all breath of a player",
+			type = "object",
+			cost = 50,
+			func = function(player, pointed_thing)
+				if (not pointed_thing.ref:is_player()) then
+					return false
+				end
+				playereffects.cancel_effect_group("breath", pointed_thing.ref:get_player_name())
+				pointed_thing.ref:set_breath(0)
+				return true
+			end
+		})
+
+		playereffects.register_effect_type("spells:stun_effect", "stunned", nil, {"speed", "jump", "sneak"},
+			function(player)
+				player:set_physics_override({speed = 0, jump = 0, sneak = false})
+			end,
+			function(effect, player)
+				player:set_physics_override({speed = 1, jump = 1, sneak = true})
+			end)
+		wands.register_spell("spells:stun", {
+			title = "Stun player",
+			description = "Disables all movement of a player",
+			type = "object",
+			cost = 100,
+			func = function(player, pointed_thing)
+				if (not pointed_thing.ref:is_player()) then
+					return false
+				end
+				if (playereffects.apply_effect_type("spells:stun_effect", 15, pointed_thing.ref)) then
+					return true
+				end
+				return false
+			end
+		})
+	end
 end

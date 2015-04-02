@@ -15,6 +15,14 @@ wand and the use them by punching with your wand. You can toggle the spells by r
 * Fly (playereffects)
 * Water Breath (playereffects)
 
+### Attack Spells
+can be disabled with *enable_attack_spells = false*
+
+* Blind player (playereffects)
+* Take player down (playereffects)
+* Damage
+* Stun player (playereffects)
+
 ## Depends
 
 mana

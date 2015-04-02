@@ -84,7 +84,7 @@ local place = function(itemstack, placer, pointed_thing)
 	end
 	local selected = tonumber(itemstack:get_metadata()) or 1
 	selected = selected + 1
-	if (selected >= 5 or selected > #wands.selected_spells[playername].list) then
+	if (selected > 5 or selected > #wands.selected_spells[playername].list) then
 		selected = 1
 	end
 	itemstack:set_name("wands:wand_"..selected)
